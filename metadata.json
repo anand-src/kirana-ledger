@@ -1,0 +1,6 @@
+{
+  "name": "Kirana Ledger — Retail Management",
+  "description": "Production-grade retail business management suite for Indian grocery shops, Kirana stores, and neighborhood retailers featuring POS billing, WhatsApp & thermal receipts, fractional inventory control, expense tracking, and historical profit reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

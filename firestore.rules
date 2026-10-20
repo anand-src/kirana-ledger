@@ -1,0 +1,496 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Safety Net (Default-Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Hardened Global Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isShopOwner(shopId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/shops/$(shopId)) &&
+        get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid;
+    }
+
+    // Validation Blueprint: UserProfile (/users/{userId})
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'defaultShopId', 'role', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'defaultShopId', 'role', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid.size() <= 128 && data.uid == request.auth.uid &&
+        data.email is string && data.email.size() <= 254 &&
+        data.displayName is string && data.displayName.size() <= 120 &&
+        data.defaultShopId is string && data.defaultShopId.size() <= 128 && data.defaultShopId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.role is string && data.role.size() <= 20 && data.role == 'owner' &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Shop (/shops/{shopId})
+    function isValidShop(data) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'shopName', 'ownerName', 'shopPhone', 'shopAddress',
+          'gstNumber', 'currency', 'defaultLowStockThreshold', 'receiptFooterNote',
+          'enableLowStockHighlight', 'defaultPaymentMethod', 'schemaVersion',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerUid', 'shopName', 'ownerName', 'shopPhone', 'shopAddress',
+          'gstNumber', 'currency', 'defaultLowStockThreshold', 'receiptFooterNote',
+          'enableLowStockHighlight', 'defaultPaymentMethod', 'schemaVersion',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerUid is string && data.ownerUid.size() <= 128 && data.ownerUid == request.auth.uid &&
+        data.shopName is string && data.shopName.size() >= 1 && data.shopName.size() <= 80 &&
+        data.ownerName is string && data.ownerName.size() <= 120 &&
+        data.shopPhone is string && data.shopPhone.size() <= 25 &&
+        data.shopAddress is string && data.shopAddress.size() <= 140 &&
+        data.gstNumber is string && data.gstNumber.size() <= 30 &&
+        data.currency is string && data.currency.size() <= 10 && data.currency == 'INR' &&
+        data.defaultLowStockThreshold is number && data.defaultLowStockThreshold >= 0 && data.defaultLowStockThreshold <= 1000000 &&
+        data.receiptFooterNote is string && data.receiptFooterNote.size() <= 140 &&
+        data.enableLowStockHighlight is bool &&
+        data.defaultPaymentMethod is string && data.defaultPaymentMethod.size() <= 16 &&
+        data.defaultPaymentMethod in ['Cash', 'UPI', 'Card'] &&
+        data.schemaVersion is number && data.schemaVersion >= 1 && data.schemaVersion <= 100 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Product (/shops/{shopId}/products/{productId})
+    function isValidProduct(data) {
+      return data.keys().hasAll([
+          'id', 'shopId', 'ownerUid', 'name', 'sku', 'category', 'unit',
+          'costPaise', 'pricePaise', 'stock', 'lowStockThreshold', 'isArchived',
+          'createdAtIso', 'updatedAtIso', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'shopId', 'ownerUid', 'name', 'sku', 'category', 'unit',
+          'costPaise', 'pricePaise', 'stock', 'lowStockThreshold', 'isArchived',
+          'createdAtIso', 'updatedAtIso', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.shopId is string && data.shopId.size() >= 1 && data.shopId.size() <= 128 && data.shopId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerUid is string && data.ownerUid.size() <= 128 && data.ownerUid == request.auth.uid &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.sku is string && data.sku.size() <= 64 &&
+        data.category is string && data.category.size() <= 60 &&
+        data.category in [
+          'Grains & Pulses', 'Dairy & Bakery', 'Cooking Oil & Spices',
+          'Snacks & Beverages', 'Household & Personal Care', 'Stationery & Misc'
+        ] &&
+        data.unit is string && data.unit.size() <= 20 &&
+        data.unit in ['piece', 'packet', 'kg', 'litre', 'box'] &&
+        data.costPaise is number && data.costPaise >= 0 && data.costPaise <= 10000000000 &&
+        data.pricePaise is number && data.pricePaise >= 0 && data.pricePaise <= 10000000000 &&
+        data.stock is number && data.stock >= 0 && data.stock <= 10000000 &&
+        data.lowStockThreshold is number && data.lowStockThreshold >= 0 && data.lowStockThreshold <= 10000000 &&
+        data.isArchived is bool &&
+        data.createdAtIso is string && data.createdAtIso.size() <= 40 &&
+        data.updatedAtIso is string && data.updatedAtIso.size() <= 40 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: StockAdjustment (/shops/{shopId}/stockAdjustments/{adjustmentId})
+    function isValidStockAdjustment(data) {
+      return data.keys().hasAll([
+          'id', 'shopId', 'ownerUid', 'productId', 'productName', 'unit',
+          'previousStock', 'newStock', 'delta', 'reason', 'notes',
+          'timestampIso', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'shopId', 'ownerUid', 'productId', 'productName', 'unit',
+          'previousStock', 'newStock', 'delta', 'reason', 'notes',
+          'timestampIso', 'createdAt'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.shopId is string && data.shopId.size() >= 1 && data.shopId.size() <= 128 && data.shopId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerUid is string && data.ownerUid.size() <= 128 && data.ownerUid == request.auth.uid &&
+        data.productId is string && data.productId.size() >= 1 && data.productId.size() <= 128 && data.productId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 120 &&
+        data.unit is string && data.unit.size() <= 20 && data.unit in ['piece', 'packet', 'kg', 'litre', 'box'] &&
+        data.previousStock is number && data.previousStock >= 0 && data.previousStock <= 10000000 &&
+        data.newStock is number && data.newStock >= 0 && data.newStock <= 10000000 &&
+        data.delta is number && data.delta >= -10000000 && data.delta <= 10000000 &&
+        data.reason is string && data.reason.size() <= 40 &&
+        data.reason in [
+          'Supplier Delivery', 'Damaged / Expired', 'Inventory Audit',
+          'Customer Return', 'Sale Reversal', 'Initial Stock'
+        ] &&
+        data.notes is string && data.notes.size() <= 240 &&
+        data.timestampIso is string && data.timestampIso.size() <= 40 &&
+        data.createdAt is timestamp;
+    }
+
+    // Validation Blueprint: Sale (/shops/{shopId}/sales/{saleId})
+    function isValidSale(data) {
+      return data.keys().hasAll([
+          'id', 'shopId', 'ownerUid', 'items', 'totalRevenuePaise',
+          'totalCogsPaise', 'grossProfitPaise', 'paymentMethod',
+          'customerPhone', 'customerName', 'status', 'reversalReason',
+          'createdAtIso', 'reversedAtIso', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'shopId', 'ownerUid', 'items', 'totalRevenuePaise',
+          'totalCogsPaise', 'grossProfitPaise', 'paymentMethod',
+          'customerPhone', 'customerName', 'status', 'reversalReason',
+          'createdAtIso', 'reversedAtIso', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.shopId is string && data.shopId.size() >= 1 && data.shopId.size() <= 128 && data.shopId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerUid is string && data.ownerUid.size() <= 128 && data.ownerUid == request.auth.uid &&
+        data.items is list && data.items.size() >= 1 && data.items.size() <= 100 &&
+        data.items[0] is map &&
+        data.totalRevenuePaise is number && data.totalRevenuePaise >= 0 && data.totalRevenuePaise <= 100000000000 &&
+        data.totalCogsPaise is number && data.totalCogsPaise >= 0 && data.totalCogsPaise <= 100000000000 &&
+        data.grossProfitPaise is number && data.grossProfitPaise >= -100000000000 && data.grossProfitPaise <= 100000000000 &&
+        data.paymentMethod is string && data.paymentMethod.size() <= 16 && data.paymentMethod in ['Cash', 'UPI', 'Card'] &&
+        data.customerPhone is string && data.customerPhone.size() <= 20 &&
+        data.customerName is string && data.customerName.size() <= 120 &&
+        data.status is string && data.status.size() <= 20 && data.status in ['COMPLETED', 'REVERSED'] &&
+        data.reversalReason is string && data.reversalReason.size() <= 240 &&
+        data.createdAtIso is string && data.createdAtIso.size() <= 40 &&
+        data.reversedAtIso is string && data.reversedAtIso.size() <= 40 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Expense (/shops/{shopId}/expenses/{expenseId})
+    function isValidExpense(data) {
+      return data.keys().hasAll([
+          'id', 'shopId', 'ownerUid', 'title', 'category', 'amountPaise',
+          'expenseDate', 'notes', 'createdAtIso', 'updatedAtIso',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'shopId', 'ownerUid', 'title', 'category', 'amountPaise',
+          'expenseDate', 'notes', 'createdAtIso', 'updatedAtIso',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.shopId is string && data.shopId.size() >= 1 && data.shopId.size() <= 128 && data.shopId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerUid is string && data.ownerUid.size() <= 128 && data.ownerUid == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.category is string && data.category.size() <= 30 &&
+        data.category in ['Rent', 'Utilities', 'Transport', 'Salary', 'Supplies', 'Other'] &&
+        data.amountPaise is number && data.amountPaise > 0 && data.amountPaise <= 100000000000 &&
+        data.expenseDate is string && data.expenseDate.size() == 10 && data.expenseDate.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        data.notes is string && data.notes.size() <= 240 &&
+        data.createdAtIso is string && data.createdAtIso.size() <= 40 &&
+        data.updatedAtIso is string && data.updatedAtIso.size() <= 40 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: ReceiptDelivery (/shops/{shopId}/receiptDeliveries/{saleId})
+    function isValidReceiptDelivery(data) {
+      return data.keys().hasAll([
+          'saleId', 'shopId', 'ownerUid', 'recipientPhone', 'normalizedRecipient',
+          'status', 'whapiMessageId', 'attemptCount', 'lastAttemptAt',
+          'errorMessage', 'errorCode', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'saleId', 'shopId', 'ownerUid', 'recipientPhone', 'normalizedRecipient',
+          'status', 'whapiMessageId', 'attemptCount', 'lastAttemptAt',
+          'errorMessage', 'errorCode', 'updatedAt'
+        ]) &&
+        data.saleId is string && data.saleId.size() >= 1 && data.saleId.size() <= 128 && data.saleId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.shopId is string && data.shopId.size() >= 1 && data.shopId.size() <= 128 && data.shopId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerUid is string && data.ownerUid.size() <= 128 && data.ownerUid == request.auth.uid &&
+        data.recipientPhone is string && data.recipientPhone.size() <= 20 &&
+        data.normalizedRecipient is string && data.normalizedRecipient.size() <= 20 &&
+        data.status is string && data.status.size() <= 20 &&
+        data.status in ['idle', 'sending', 'accepted', 'delivered', 'failed'] &&
+        data.whapiMessageId is string && data.whapiMessageId.size() <= 128 &&
+        data.attemptCount is number && data.attemptCount >= 0 && data.attemptCount <= 1000 &&
+        data.lastAttemptAt is string && data.lastAttemptAt.size() <= 40 &&
+        data.errorMessage is string && data.errorMessage.size() <= 300 &&
+        data.errorCode is string && data.errorCode.size() <= 64 &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: ShopCounter (/shops/{shopId}/counters/{counterId})
+    function isValidShopCounter(data) {
+      return data.keys().hasAll(['id', 'shopId', 'ownerUid', 'dateKeyCompact', 'seq', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'shopId', 'ownerUid', 'dateKeyCompact', 'seq', 'updatedAt']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.shopId is string && data.shopId.size() >= 1 && data.shopId.size() <= 128 && data.shopId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerUid is string && data.ownerUid.size() <= 128 && data.ownerUid == request.auth.uid &&
+        data.dateKeyCompact is string && data.dateKeyCompact.size() <= 16 &&
+        data.seq is number && data.seq >= 1 && data.seq <= 1000000 &&
+        data.updatedAt is timestamp;
+    }
+
+    // Collection 1: /users/{userId} (PII Isolated to strict owner)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if false;
+      allow create: if isSignedIn() &&
+        isValidId(userId) &&
+        userId == request.auth.uid &&
+        isValidUserProfile(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() &&
+        isValidUserProfile(incoming()) &&
+        isValidId(userId) &&
+        userId == request.auth.uid &&
+        incoming().uid == existing().uid &&
+        incoming().role == existing().role &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'defaultShopId', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // Collection 2: /shops/{shopId}
+    match /shops/{shopId} {
+      allow get: if isSignedIn() && isValidId(shopId) && (resource == null || existing().ownerUid == request.auth.uid);
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isSignedIn() &&
+        isValidId(shopId) &&
+        isValidShop(incoming()) &&
+        incoming().id == shopId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() &&
+        isValidShop(incoming()) &&
+        isValidId(shopId) &&
+        existing().ownerUid == request.auth.uid &&
+        incoming().id == existing().id &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'shopName', 'ownerName', 'shopPhone', 'shopAddress', 'gstNumber',
+          'defaultLowStockThreshold', 'receiptFooterNote', 'enableLowStockHighlight',
+          'defaultPaymentMethod', 'schemaVersion', 'updatedAt'
+        ]);
+      allow delete: if false;
+
+      // Subcollection 2a: /shops/{shopId}/products/{productId}
+      match /products/{productId} {
+        allow get: if isSignedIn() && isValidId(shopId) && isValidId(productId) &&
+          isShopOwner(shopId) && (resource == null || (existing().ownerUid == request.auth.uid && existing().shopId == shopId));
+        allow list: if isSignedIn() && existing().ownerUid == request.auth.uid && existing().shopId == shopId;
+        allow create: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(productId) &&
+          isValidProduct(incoming()) &&
+          incoming().id == productId &&
+          incoming().shopId == shopId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isShopOwner(shopId);
+        allow update: if isSignedIn() &&
+          isValidProduct(incoming()) &&
+          isValidId(shopId) &&
+          isValidId(productId) &&
+          existing().ownerUid == request.auth.uid &&
+          existing().shopId == shopId &&
+          incoming().id == existing().id &&
+          incoming().shopId == existing().shopId &&
+          incoming().ownerUid == existing().ownerUid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().createdAtIso == existing().createdAtIso &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'sku', 'category', 'unit', 'costPaise', 'pricePaise',
+            'stock', 'lowStockThreshold', 'isArchived', 'updatedAtIso', 'updatedAt'
+          ]) &&
+          isShopOwner(shopId);
+        allow delete: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(productId) &&
+          existing().ownerUid == request.auth.uid &&
+          existing().shopId == shopId &&
+          isShopOwner(shopId);
+      }
+
+      // Subcollection 2b: /shops/{shopId}/stockAdjustments/{adjustmentId}
+      match /stockAdjustments/{adjustmentId} {
+        allow get: if isSignedIn() && isValidId(shopId) && isValidId(adjustmentId) &&
+          isShopOwner(shopId) && (resource == null || (existing().ownerUid == request.auth.uid && existing().shopId == shopId));
+        allow list: if isSignedIn() && existing().ownerUid == request.auth.uid && existing().shopId == shopId;
+        allow create: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(adjustmentId) &&
+          isValidStockAdjustment(incoming()) &&
+          incoming().id == adjustmentId &&
+          incoming().shopId == shopId &&
+          incoming().createdAt == request.time &&
+          isShopOwner(shopId);
+        allow update: if false;
+        allow delete: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(adjustmentId) &&
+          existing().ownerUid == request.auth.uid &&
+          existing().shopId == shopId &&
+          isShopOwner(shopId);
+      }
+
+      // Subcollection 2c: /shops/{shopId}/sales/{saleId}
+      match /sales/{saleId} {
+        allow get: if isSignedIn() && isValidId(shopId) && isValidId(saleId) &&
+          isShopOwner(shopId) && (resource == null || (existing().ownerUid == request.auth.uid && existing().shopId == shopId));
+        allow list: if isSignedIn() && existing().ownerUid == request.auth.uid && existing().shopId == shopId;
+        allow create: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(saleId) &&
+          isValidSale(incoming()) &&
+          incoming().id == saleId &&
+          incoming().shopId == shopId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isShopOwner(shopId);
+        allow update: if isSignedIn() &&
+          isValidSale(incoming()) &&
+          isValidId(shopId) &&
+          isValidId(saleId) &&
+          existing().ownerUid == request.auth.uid &&
+          existing().shopId == shopId &&
+          // Terminal State Lock: once REVERSED, a sale cannot be modified again
+          existing().status == 'COMPLETED' &&
+          incoming().status == 'REVERSED' &&
+          incoming().reversalReason.size() >= 1 &&
+          incoming().id == existing().id &&
+          incoming().shopId == existing().shopId &&
+          incoming().ownerUid == existing().ownerUid &&
+          incoming().totalRevenuePaise == existing().totalRevenuePaise &&
+          incoming().totalCogsPaise == existing().totalCogsPaise &&
+          incoming().grossProfitPaise == existing().grossProfitPaise &&
+          incoming().paymentMethod == existing().paymentMethod &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().createdAtIso == existing().createdAtIso &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'reversalReason', 'reversedAtIso', 'updatedAt'
+          ]) &&
+          isShopOwner(shopId);
+        allow delete: if false;
+      }
+
+      // Subcollection 2d: /shops/{shopId}/expenses/{expenseId}
+      match /expenses/{expenseId} {
+        allow get: if isSignedIn() && isValidId(shopId) && isValidId(expenseId) &&
+          isShopOwner(shopId) && (resource == null || (existing().ownerUid == request.auth.uid && existing().shopId == shopId));
+        allow list: if isSignedIn() && existing().ownerUid == request.auth.uid && existing().shopId == shopId;
+        allow create: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(expenseId) &&
+          isValidExpense(incoming()) &&
+          incoming().id == expenseId &&
+          incoming().shopId == shopId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isShopOwner(shopId);
+        allow update: if isSignedIn() &&
+          isValidExpense(incoming()) &&
+          isValidId(shopId) &&
+          isValidId(expenseId) &&
+          existing().ownerUid == request.auth.uid &&
+          existing().shopId == shopId &&
+          incoming().id == existing().id &&
+          incoming().shopId == existing().shopId &&
+          incoming().ownerUid == existing().ownerUid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().createdAtIso == existing().createdAtIso &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'category', 'amountPaise', 'expenseDate', 'notes', 'updatedAtIso', 'updatedAt'
+          ]) &&
+          isShopOwner(shopId);
+        allow delete: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(expenseId) &&
+          existing().ownerUid == request.auth.uid &&
+          existing().shopId == shopId &&
+          isShopOwner(shopId);
+      }
+
+      // Subcollection 2e: /shops/{shopId}/receiptDeliveries/{saleId}
+      match /receiptDeliveries/{saleId} {
+        allow get: if isSignedIn() && isValidId(shopId) && isValidId(saleId) &&
+          isShopOwner(shopId) && (resource == null || (existing().ownerUid == request.auth.uid && existing().shopId == shopId));
+        allow list: if isSignedIn() && existing().ownerUid == request.auth.uid && existing().shopId == shopId;
+        allow create: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(saleId) &&
+          isValidReceiptDelivery(incoming()) &&
+          incoming().saleId == saleId &&
+          incoming().shopId == shopId &&
+          incoming().updatedAt == request.time &&
+          isShopOwner(shopId);
+        allow update: if isSignedIn() &&
+          isValidReceiptDelivery(incoming()) &&
+          isValidId(shopId) &&
+          isValidId(saleId) &&
+          existing().ownerUid == request.auth.uid &&
+          existing().shopId == shopId &&
+          incoming().saleId == existing().saleId &&
+          incoming().shopId == existing().shopId &&
+          incoming().ownerUid == existing().ownerUid &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'recipientPhone', 'normalizedRecipient', 'status', 'whapiMessageId',
+            'attemptCount', 'lastAttemptAt', 'errorMessage', 'errorCode', 'updatedAt'
+          ]) &&
+          isShopOwner(shopId);
+        allow delete: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(saleId) &&
+          existing().ownerUid == request.auth.uid &&
+          existing().shopId == shopId &&
+          isShopOwner(shopId);
+      }
+
+      // Subcollection 2f: /shops/{shopId}/counters/{counterId}
+      match /counters/{counterId} {
+        allow get: if isSignedIn() && isValidId(shopId) && isValidId(counterId) &&
+          isShopOwner(shopId) && (resource == null || (existing().ownerUid == request.auth.uid && existing().shopId == shopId));
+        allow list: if isSignedIn() && existing().ownerUid == request.auth.uid && existing().shopId == shopId;
+        allow create: if isSignedIn() &&
+          isValidId(shopId) &&
+          isValidId(counterId) &&
+          isValidShopCounter(incoming()) &&
+          incoming().id == counterId &&
+          incoming().shopId == shopId &&
+          incoming().updatedAt == request.time &&
+          isShopOwner(shopId);
+        allow update: if isSignedIn() &&
+          isValidShopCounter(incoming()) &&
+          isValidId(shopId) &&
+          isValidId(counterId) &&
+          existing().ownerUid == request.auth.uid &&
+          existing().shopId == shopId &&
+          incoming().id == existing().id &&
+          incoming().shopId == existing().shopId &&
+          incoming().ownerUid == existing().ownerUid &&
+          incoming().dateKeyCompact == existing().dateKeyCompact &&
+          incoming().seq >= existing().seq &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['seq', 'updatedAt']) &&
+          isShopOwner(shopId);
+        allow delete: if false;
+      }
+    }
+  }
+}

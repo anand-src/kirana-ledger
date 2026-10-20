@@ -1,0 +1,617 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated shopkeeper user profile and primary shop assignment",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "defaultShopId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["owner"],
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "displayName", "defaultShopId", "role", "createdAt", "updatedAt"]
+    },
+    "Shop": {
+      "title": "Shop",
+      "description": "Kirana or retail shop tenant profile and configuration settings",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "shopName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "ownerName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "shopPhone": {
+          "type": "string",
+          "maxLength": 25
+        },
+        "shopAddress": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "gstNumber": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["INR"],
+          "maxLength": 10
+        },
+        "defaultLowStockThreshold": {
+          "type": "number"
+        },
+        "receiptFooterNote": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "enableLowStockHighlight": {
+          "type": "boolean"
+        },
+        "defaultPaymentMethod": {
+          "type": "string",
+          "enum": ["Cash", "UPI", "Card"],
+          "maxLength": 16
+        },
+        "schemaVersion": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "shopName",
+        "ownerName",
+        "shopPhone",
+        "shopAddress",
+        "gstNumber",
+        "currency",
+        "defaultLowStockThreshold",
+        "receiptFooterNote",
+        "enableLowStockHighlight",
+        "defaultPaymentMethod",
+        "schemaVersion",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory item belonging to a specific shop",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "shopId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "sku": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Grains & Pulses",
+            "Dairy & Bakery",
+            "Cooking Oil & Spices",
+            "Snacks & Beverages",
+            "Household & Personal Care",
+            "Stationery & Misc"
+          ],
+          "maxLength": 60
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["piece", "packet", "kg", "litre", "box"],
+          "maxLength": 20
+        },
+        "costPaise": {
+          "type": "number"
+        },
+        "pricePaise": {
+          "type": "number"
+        },
+        "stock": {
+          "type": "number"
+        },
+        "lowStockThreshold": {
+          "type": "number"
+        },
+        "isArchived": {
+          "type": "boolean"
+        },
+        "createdAtIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "updatedAtIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "shopId",
+        "ownerUid",
+        "name",
+        "sku",
+        "category",
+        "unit",
+        "costPaise",
+        "pricePaise",
+        "stock",
+        "lowStockThreshold",
+        "isArchived",
+        "createdAtIso",
+        "updatedAtIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StockAdjustment": {
+      "title": "StockAdjustment",
+      "description": "Audit log entry for manual or reversal stock adjustments",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "shopId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["piece", "packet", "kg", "litre", "box"],
+          "maxLength": 20
+        },
+        "previousStock": {
+          "type": "number"
+        },
+        "newStock": {
+          "type": "number"
+        },
+        "delta": {
+          "type": "number"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "Supplier Delivery",
+            "Damaged / Expired",
+            "Inventory Audit",
+            "Customer Return",
+            "Sale Reversal",
+            "Initial Stock"
+          ],
+          "maxLength": 40
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "timestampIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "shopId",
+        "ownerUid",
+        "productId",
+        "productName",
+        "unit",
+        "previousStock",
+        "newStock",
+        "delta",
+        "reason",
+        "notes",
+        "timestampIso",
+        "createdAt"
+      ]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Completed or reversed POS invoice record with snapshotted line items",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "shopId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "items": {
+          "type": "array",
+          "description": "Bounded list of up to 100 snapshotted sale line items"
+        },
+        "totalRevenuePaise": {
+          "type": "number"
+        },
+        "totalCogsPaise": {
+          "type": "number"
+        },
+        "grossProfitPaise": {
+          "type": "number"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["Cash", "UPI", "Card"],
+          "maxLength": 16
+        },
+        "customerPhone": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "customerName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "status": {
+          "type": "string",
+          "enum": ["COMPLETED", "REVERSED"],
+          "maxLength": 20
+        },
+        "reversalReason": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "createdAtIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "reversedAtIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "shopId",
+        "ownerUid",
+        "items",
+        "totalRevenuePaise",
+        "totalCogsPaise",
+        "grossProfitPaise",
+        "paymentMethod",
+        "customerPhone",
+        "customerName",
+        "status",
+        "reversalReason",
+        "createdAtIso",
+        "reversedAtIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Shop operating expense entry",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "shopId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Rent", "Utilities", "Transport", "Salary", "Supplies", "Other"],
+          "maxLength": 30
+        },
+        "amountPaise": {
+          "type": "number"
+        },
+        "expenseDate": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "createdAtIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "updatedAtIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "shopId",
+        "ownerUid",
+        "title",
+        "category",
+        "amountPaise",
+        "expenseDate",
+        "notes",
+        "createdAtIso",
+        "updatedAtIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ReceiptDelivery": {
+      "title": "ReceiptDelivery",
+      "description": "WhatsApp receipt delivery tracking record per sale invoice",
+      "type": "object",
+      "properties": {
+        "saleId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "shopId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "recipientPhone": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "normalizedRecipient": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "status": {
+          "type": "string",
+          "enum": ["idle", "sending", "accepted", "delivered", "failed"],
+          "maxLength": 20
+        },
+        "whapiMessageId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "attemptCount": {
+          "type": "number"
+        },
+        "lastAttemptAt": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "errorMessage": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "errorCode": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "saleId",
+        "shopId",
+        "ownerUid",
+        "recipientPhone",
+        "normalizedRecipient",
+        "status",
+        "whapiMessageId",
+        "attemptCount",
+        "lastAttemptAt",
+        "errorMessage",
+        "errorCode",
+        "updatedAt"
+      ]
+    },
+    "ShopCounter": {
+      "title": "ShopCounter",
+      "description": "Daily invoice sequence counter for collision-free POS receipt numbering",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "shopId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "dateKeyCompact": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "seq": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "shopId", "ownerUid", "dateKeyCompact", "seq", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Authenticated shopkeeper user profile document"
+    },
+    "/shops/{shopId}": {
+      "schema": "Shop",
+      "description": "Retail / Kirana shop tenant profile and configuration settings"
+    },
+    "/shops/{shopId}/products/{productId}": {
+      "schema": "Product",
+      "description": "Shop inventory products"
+    },
+    "/shops/{shopId}/stockAdjustments/{adjustmentId}": {
+      "schema": "StockAdjustment",
+      "description": "Audit log of inventory stock adjustments"
+    },
+    "/shops/{shopId}/sales/{saleId}": {
+      "schema": "Sale",
+      "description": "POS sale invoices and line items"
+    },
+    "/shops/{shopId}/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Operating expenses for the shop"
+    },
+    "/shops/{shopId}/receiptDeliveries/{saleId}": {
+      "schema": "ReceiptDelivery",
+      "description": "WhatsApp receipt delivery tracking records"
+    },
+    "/shops/{shopId}/counters/{counterId}": {
+      "schema": "ShopCounter",
+      "description": "Daily invoice sequence counter"
+    }
+  }
+}
